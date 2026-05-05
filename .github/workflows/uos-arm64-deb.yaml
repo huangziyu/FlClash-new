@@ -180,29 +180,29 @@ jobs:
             desktop_file="$(find "$work/package/usr/share/applications" -type f -name '*.desktop' -print -quit)"
             sed -i 's|^Exec=.*|Exec=env FLUTTER_LINUX_RENDERER=software FlClash %U|' "$desktop_file"
             cat > "$work/package/DEBIAN/postinst" <<'EOF'
-#!/usr/bin/env sh
-set -e
-cat > /usr/bin/FlClash <<'WRAPPER'
-#!/usr/bin/env sh
-export FLUTTER_LINUX_RENDERER="${FLUTTER_LINUX_RENDERER:-software}"
-exec /usr/share/FlClash/FlClash "$@"
-WRAPPER
-chmod +x /usr/bin/FlClash
-if command -v fc-cache >/dev/null 2>&1; then
-  fc-cache -f /usr/share/fonts/truetype/flclash >/dev/null 2>&1 || true
-fi
-exit 0
-EOF
+          #!/usr/bin/env sh
+          set -e
+          cat > /usr/bin/FlClash <<'WRAPPER'
+          #!/usr/bin/env sh
+          export FLUTTER_LINUX_RENDERER="${FLUTTER_LINUX_RENDERER:-software}"
+          exec /usr/share/FlClash/FlClash "$@"
+          WRAPPER
+          chmod +x /usr/bin/FlClash
+          if command -v fc-cache >/dev/null 2>&1; then
+            fc-cache -f /usr/share/fonts/truetype/flclash >/dev/null 2>&1 || true
+          fi
+          exit 0
+          EOF
             chmod 755 "$work/package/DEBIAN/postinst"
             cat > "$work/package/DEBIAN/postrm" <<'EOF'
-#!/usr/bin/env sh
-set -e
-rm -f /usr/bin/FlClash
-if command -v fc-cache >/dev/null 2>&1; then
-  fc-cache -f >/dev/null 2>&1 || true
-fi
-exit 0
-EOF
+          #!/usr/bin/env sh
+          set -e
+          rm -f /usr/bin/FlClash
+          if command -v fc-cache >/dev/null 2>&1; then
+            fc-cache -f >/dev/null 2>&1 || true
+          fi
+          exit 0
+          EOF
             chmod 755 "$work/package/DEBIAN/postrm"
             if grep -q '^Depends:' "$control_file"; then
               sed -i 's/^Depends:.*/Depends: libgtk-3-0, libappindicator3-1, libkeybinder-3.0-0, fontconfig/' "$control_file"
