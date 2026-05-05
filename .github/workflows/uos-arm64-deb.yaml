@@ -131,6 +131,21 @@ jobs:
           if old_dep not in setup_text:
               raise SystemExit('Expected libayatana dependency line was not found in setup.dart')
           setup.write_text(setup_text.replace(old_dep, new_dep))
+
+          deb_config = Path('linux/packaging/deb/make_config.yaml')
+          deb_config_text = deb_config.read_text()
+          old_runtime_deps = """dependencies:
+  - libayatana-appindicator3-dev
+  - libkeybinder-3.0-dev
+"""
+          new_runtime_deps = """dependencies:
+  - libgtk-3-0
+  - libappindicator3-1
+  - libkeybinder-3.0-0
+"""
+          if old_runtime_deps not in deb_config_text:
+              raise SystemExit('Expected deb dependency block was not found in linux/packaging/deb/make_config.yaml')
+          deb_config.write_text(deb_config_text.replace(old_runtime_deps, new_runtime_deps))
           PY
 
       - name: Get Flutter dependency
@@ -164,12 +179,19 @@ jobs:
             work="$(mktemp -d)"
             mkdir -p "$work/package"
             dpkg-deb -R "$deb" "$work/package"
+            control_file="$work/package/DEBIAN/control"
+            if grep -q '^Depends:' "$control_file"; then
+              sed -i 's/^Depends:.*/Depends: libgtk-3-0, libappindicator3-1, libkeybinder-3.0-0/' "$control_file"
+            else
+              printf '\nDepends: libgtk-3-0, libappindicator3-1, libkeybinder-3.0-0\n' >> "$control_file"
+            fi
             dpkg-deb -Zxz -z6 -b "$work/package" "$work/repacked.deb"
             mv "$work/repacked.deb" "$deb"
             rm -rf "$work"
 
             echo "Repacked $deb with xz compression"
-            dpkg-deb -f "$deb" Package Version Architecture
+            dpkg-deb -f "$deb" Package Version Architecture Depends
+            dpkg-deb -f "$deb" Depends | grep -q 'libappindicator3-1'
             ar t "$deb"
             if ar t "$deb" | grep -q 'zst$'; then
               echo "$deb still contains zstd-compressed members."
