@@ -86,6 +86,16 @@ jobs:
         shell: bash
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Download UOS CJK Flutter font
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/fonts
+          curl --fail --location --retry 3 \
+            --output assets/fonts/NotoSansCJKsc-Regular.otf \
+            https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf
+          test -s assets/fonts/NotoSansCJKsc-Regular.otf
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -141,6 +151,28 @@ jobs:
           if old_runtime_deps not in deb_config_text:
               raise SystemExit('Expected deb dependency block was not found in linux/packaging/deb/make_config.yaml')
           deb_config.write_text(deb_config_text.replace(old_runtime_deps, new_runtime_deps))
+
+          font_manifest_block = "    - family: Icons\n      fonts:\n        - asset: assets/fonts/Icons.ttf\n"
+          cjk_font_block = font_manifest_block + "    - family: NotoSansCJKsc\n      fonts:\n        - asset: assets/fonts/NotoSansCJKsc-Regular.otf\n"
+          text = pubspec.read_text()
+          if "family: NotoSansCJKsc" not in text:
+              if font_manifest_block not in text:
+                  raise SystemExit('Expected Icons font block was not found in pubspec.yaml')
+              pubspec.write_text(text.replace(font_manifest_block, cjk_font_block))
+
+          app = Path('lib/application.dart')
+          app_text = app.read_text()
+          app_text = app_text.replace(
+              "          theme: ThemeData(\n            useMaterial3: true,\n",
+              "          theme: ThemeData(\n            fontFamily: 'NotoSansCJKsc',\n            useMaterial3: true,\n",
+          )
+          app_text = app_text.replace(
+              "          darkTheme: ThemeData(\n            useMaterial3: true,\n",
+              "          darkTheme: ThemeData(\n            fontFamily: 'NotoSansCJKsc',\n            useMaterial3: true,\n",
+          )
+          if app_text.count("fontFamily: 'NotoSansCJKsc'") != 2:
+              raise SystemExit('Failed to patch both ThemeData blocks with NotoSansCJKsc')
+          app.write_text(app_text)
           PY
 
       - name: Get Flutter dependency
@@ -175,6 +207,9 @@ jobs:
             mkdir -p "$work/package"
             dpkg-deb -R "$deb" "$work/package"
             control_file="$work/package/DEBIAN/control"
+            flutter_assets="$work/package/usr/share/FlClash/data/flutter_assets"
+            test -f "$flutter_assets/assets/fonts/NotoSansCJKsc-Regular.otf"
+            grep -q 'NotoSansCJKsc' "$flutter_assets/FontManifest.json"
             mkdir -p "$work/package/usr/share/fonts/truetype/flclash"
             font_file="$(find /usr/share/fonts -type f \( -iname '*wqy*microhei*.ttc' -o -iname '*microhei*.ttc' -o -iname '*wqy*microhei*.ttf' \) -print -quit)"
             test -n "$font_file"
@@ -197,6 +232,7 @@ jobs:
             contents_file="$(mktemp)"
             dpkg-deb -c "$deb" > "$contents_file"
             grep -q 'usr/share/fonts/truetype/flclash/wqy-microhei.ttc' "$contents_file"
+            grep -q 'usr/share/FlClash/data/flutter_assets/assets/fonts/NotoSansCJKsc-Regular.otf' "$contents_file"
             rm -f "$contents_file"
             ar t "$deb"
             if ar t "$deb" | grep -q 'zst$'; then
