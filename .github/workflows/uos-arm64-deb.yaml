@@ -108,11 +108,7 @@ jobs:
 
           pubspec = Path('pubspec.yaml')
           text = pubspec.read_text()
-          old = """  yaml_writer:
-            git:
-              url: https://github.com/chen08209/yaml_writer
-              ref: master
-          """
+          old = "  yaml_writer:\n    git:\n      url: https://github.com/chen08209/yaml_writer\n      ref: master\n"
           new = "  yaml_writer: ^2.1.0\n"
           if old not in text:
               raise SystemExit('Expected yaml_writer git dependency was not found in pubspec.yaml')
