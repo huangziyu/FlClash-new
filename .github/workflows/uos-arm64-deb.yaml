@@ -8,6 +8,10 @@ on:
         required: false
         default: v0.8.92-uos-manual
   push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/uos-arm64-deb.yaml'
     tags:
       - 'v*-uos*'
 
