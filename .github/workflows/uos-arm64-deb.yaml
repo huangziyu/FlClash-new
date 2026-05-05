@@ -176,34 +176,11 @@ jobs:
             dpkg-deb -R "$deb" "$work/package"
             control_file="$work/package/DEBIAN/control"
             mkdir -p "$work/package/usr/share/fonts/truetype/flclash"
-            cp /usr/share/fonts/truetype/wqy/wqy-microhei.ttc "$work/package/usr/share/fonts/truetype/flclash/"
+            font_file="$(find /usr/share/fonts -type f \( -iname '*wqy*microhei*.ttc' -o -iname '*microhei*.ttc' -o -iname '*wqy*microhei*.ttf' \) -print -quit)"
+            test -n "$font_file"
+            install -m 0644 "$font_file" "$work/package/usr/share/fonts/truetype/flclash/wqy-microhei.ttc"
             desktop_file="$(find "$work/package/usr/share/applications" -type f -name '*.desktop' -print -quit)"
             sed -i 's|^Exec=.*|Exec=env FLUTTER_LINUX_RENDERER=software FlClash %U|' "$desktop_file"
-            cat > "$work/package/DEBIAN/postinst" <<'EOF'
-          #!/usr/bin/env sh
-          set -e
-          cat > /usr/bin/FlClash <<'WRAPPER'
-          #!/usr/bin/env sh
-          export FLUTTER_LINUX_RENDERER="${FLUTTER_LINUX_RENDERER:-software}"
-          exec /usr/share/FlClash/FlClash "$@"
-          WRAPPER
-          chmod +x /usr/bin/FlClash
-          if command -v fc-cache >/dev/null 2>&1; then
-            fc-cache -f /usr/share/fonts/truetype/flclash >/dev/null 2>&1 || true
-          fi
-          exit 0
-          EOF
-            chmod 755 "$work/package/DEBIAN/postinst"
-            cat > "$work/package/DEBIAN/postrm" <<'EOF'
-          #!/usr/bin/env sh
-          set -e
-          rm -f /usr/bin/FlClash
-          if command -v fc-cache >/dev/null 2>&1; then
-            fc-cache -f >/dev/null 2>&1 || true
-          fi
-          exit 0
-          EOF
-            chmod 755 "$work/package/DEBIAN/postrm"
             if grep -q '^Depends:' "$control_file"; then
               sed -i 's/^Depends:.*/Depends: libgtk-3-0, libappindicator3-1, libkeybinder-3.0-0, fontconfig/' "$control_file"
             else
@@ -217,7 +194,10 @@ jobs:
             dpkg-deb -f "$deb" Package Version Architecture Depends
             dpkg-deb -f "$deb" Depends | grep -q 'libappindicator3-1'
             dpkg-deb -f "$deb" Depends | grep -q 'fontconfig'
-            dpkg-deb -c "$deb" | grep -q 'usr/share/fonts/truetype/flclash/wqy-microhei.ttc'
+            contents_file="$(mktemp)"
+            dpkg-deb -c "$deb" > "$contents_file"
+            grep -q 'usr/share/fonts/truetype/flclash/wqy-microhei.ttc' "$contents_file"
+            rm -f "$contents_file"
             ar t "$deb"
             if ar t "$deb" | grep -q 'zst$'; then
               echo "$deb still contains zstd-compressed members."
