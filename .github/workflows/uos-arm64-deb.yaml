@@ -134,15 +134,8 @@ jobs:
 
           deb_config = Path('linux/packaging/deb/make_config.yaml')
           deb_config_text = deb_config.read_text()
-          old_runtime_deps = """dependencies:
-  - libayatana-appindicator3-dev
-  - libkeybinder-3.0-dev
-"""
-          new_runtime_deps = """dependencies:
-  - libgtk-3-0
-  - libappindicator3-1
-  - libkeybinder-3.0-0
-"""
+          old_runtime_deps = "dependencies:\n  - libayatana-appindicator3-dev\n  - libkeybinder-3.0-dev\n"
+          new_runtime_deps = "dependencies:\n  - libgtk-3-0\n  - libappindicator3-1\n  - libkeybinder-3.0-0\n"
           if old_runtime_deps not in deb_config_text:
               raise SystemExit('Expected deb dependency block was not found in linux/packaging/deb/make_config.yaml')
           deb_config.write_text(deb_config_text.replace(old_runtime_deps, new_runtime_deps))
